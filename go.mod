@@ -1,3 +1,3 @@
-module github.com/g41797/wrcloopback
+module github.com/g41797/kissngo.queue
 
-go 1.17
+go 1.19
