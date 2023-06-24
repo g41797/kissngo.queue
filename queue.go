@@ -37,6 +37,10 @@ func (q *Queue) Put(item any) (status bool) {
 
 	}
 
+	if checkCancel(q.cancel) {
+		return false
+	}
+
 	items = append(items, item)
 	q.items <- items
 
@@ -63,5 +67,19 @@ func (q *Queue) Get() (item any, status bool) {
 	} else {
 		q.items <- items[1:]
 	}
+
+	if checkCancel(q.cancel) {
+		return nil, false
+	}
+
 	return item, true
+}
+
+func checkCancel(c chan struct{}) bool {
+	select {
+	case <-c:
+		return true
+	default:
+		return false
+	}
 }
