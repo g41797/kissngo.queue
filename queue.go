@@ -22,9 +22,16 @@ func NewQueue() *Queue {
 }
 
 func (q *Queue) Put(item any) (status bool) {
-	q.lock.Lock()
-	defer q.lock.Unlock()
 
+	q.lock.Lock()
+	cont := q.PutNMT(item)
+	q.lock.Unlock()
+
+	return cont
+
+}
+
+func (q *Queue) PutNMT(item any) (status bool) {
 	var items []any
 
 	select {
@@ -49,8 +56,12 @@ func (q *Queue) Put(item any) (status bool) {
 
 func (q *Queue) Cancel() {
 	q.lock.Lock()
-	close(q.cancel)
+	q.CancelNMT()
 	q.lock.Unlock()
+}
+
+func (q *Queue) CancelNMT() {
+	close(q.cancel)
 }
 
 func (q *Queue) Get() (item any, status bool) {
