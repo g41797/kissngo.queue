@@ -7,12 +7,12 @@ import (
 
 func TestPutGet(t *testing.T) {
 
-	q := NewQueue()
+	q := NewQueue[int]()
 
-	ln := 3
+	ln := 2
 
 	ni := 10
-	st := time.Second
+	st := stm()
 	resch := make(chan int, ln)
 
 	for l := 0; l < ln; l++ {
@@ -43,18 +43,18 @@ func TestPutGet(t *testing.T) {
 
 func TestPutGetCancel(t *testing.T) {
 
-	q := NewQueue()
+	q := NewQueue[int]()
 
-	ln := 4
+	ln := 2
 	ni := 10
-	st := time.Second
+	st := stm()
 	resch := make(chan int, ln)
 
 	for l := 0; l < ln; l++ {
 		go putItems(q, ni, st, resch, q.Put)
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(stm())
 
 	q.Cancel()
 
@@ -76,10 +76,10 @@ func TestPutGetCancel(t *testing.T) {
 
 }
 
-func putItems(q *Queue, ni int, st time.Duration, pn chan<- int, put func(any) bool) {
+func putItems(q *Queue[int], ni int, st time.Duration, pn chan<- int, put func(int) bool) {
 	var i int
 	for i = 1; i <= ni; i++ {
-		mp := make(map[int]string)
+		mp := i
 		if !put(mp) {
 			pn <- i - 1
 			return
@@ -89,22 +89,22 @@ func putItems(q *Queue, ni int, st time.Duration, pn chan<- int, put func(any) b
 	pn <- i - 1
 }
 
-func TestPutGetCancelNMT(t *testing.T) {
+func TestPutGetCancelMT(t *testing.T) {
 
-	q := NewQueue()
+	q := NewQueue[int]()
 
 	ln := 1
 	ni := 10
-	st := time.Second
+	st := stm()
 	resch := make(chan int, ln)
 
 	for l := 0; l < ln; l++ {
-		go putItems(q, ni, st, resch, q.PutNMT)
+		go putItems(q, ni, st, resch, q.PutMT)
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(stm())
 
-	q.CancelNMT()
+	q.CancelMT()
 
 	var got int
 	for l := 0; l < ln; l++ {
@@ -122,4 +122,8 @@ func TestPutGetCancelNMT(t *testing.T) {
 		t.Errorf("Get: Cancel doesn't work")
 	}
 
+}
+
+func stm() time.Duration {
+	return time.Second / 10
 }

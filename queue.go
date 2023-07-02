@@ -4,16 +4,16 @@ import (
 	"sync"
 )
 
-type Queue struct {
+type Queue[T any] struct {
 	lock   sync.Mutex
-	items  chan []any
+	items  chan []T
 	empty  chan bool
 	cancel chan struct{}
 }
 
-func NewQueue() *Queue {
-	qu := Queue{
-		items:  make(chan []any, 1),
+func NewQueue[T any]() *Queue[T] {
+	qu := Queue[T]{
+		items:  make(chan []T, 1),
 		empty:  make(chan bool, 1),
 		cancel: make(chan struct{}),
 	}
@@ -21,18 +21,18 @@ func NewQueue() *Queue {
 	return &qu
 }
 
-func (q *Queue) Put(item any) (status bool) {
+func (q *Queue[T]) PutMT(item T) (status bool) {
 
 	q.lock.Lock()
-	cont := q.PutNMT(item)
+	cont := q.Put(item)
 	q.lock.Unlock()
 
 	return cont
 
 }
 
-func (q *Queue) PutNMT(item any) (status bool) {
-	var items []any
+func (q *Queue[T]) Put(item T) (status bool) {
+	var items []T
 
 	select {
 
@@ -54,22 +54,22 @@ func (q *Queue) PutNMT(item any) (status bool) {
 	return true
 }
 
-func (q *Queue) Cancel() {
+func (q *Queue[T]) CancelMT() {
 	q.lock.Lock()
-	q.CancelNMT()
+	q.Cancel()
 	q.lock.Unlock()
 }
 
-func (q *Queue) CancelNMT() {
+func (q *Queue[T]) Cancel() {
 	close(q.cancel)
 }
 
-func (q *Queue) Get() (item any, status bool) {
-
-	var items []any
+func (q *Queue[T]) Get() (item T, status bool) {
+	var nilitem T
+	var items []T
 	select {
 	case <-q.cancel:
-		return nil, false
+		return nilitem, false
 	case items = <-q.items:
 	}
 	item = items[0]
@@ -80,7 +80,7 @@ func (q *Queue) Get() (item any, status bool) {
 	}
 
 	if checkCancel(q.cancel) {
-		return nil, false
+		return nilitem, false
 	}
 
 	return item, true
