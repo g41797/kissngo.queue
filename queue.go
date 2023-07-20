@@ -5,7 +5,7 @@ import (
 )
 
 type Queue[T any] struct {
-	lock   sync.Mutex
+	sync.Mutex
 	items  chan []T
 	empty  chan bool
 	cancel chan struct{}
@@ -23,9 +23,9 @@ func NewQueue[T any]() *Queue[T] {
 
 func (q *Queue[T]) PutMT(item T) (status bool) {
 
-	q.lock.Lock()
+	q.Lock()
 	cont := q.Put(item)
-	q.lock.Unlock()
+	q.Unlock()
 
 	return cont
 
@@ -55,9 +55,9 @@ func (q *Queue[T]) Put(item T) (status bool) {
 }
 
 func (q *Queue[T]) CancelMT() {
-	q.lock.Lock()
+	q.Lock()
 	q.Cancel()
-	q.lock.Unlock()
+	q.Unlock()
 }
 
 func (q *Queue[T]) Cancel() {
