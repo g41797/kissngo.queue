@@ -2,6 +2,7 @@ package kissngoqueue
 
 import (
 	"sync"
+	"time"
 )
 
 type Queue[T any] struct {
@@ -93,4 +94,88 @@ func checkCancel(c chan struct{}) bool {
 	default:
 		return false
 	}
+}
+
+func (q *Queue[T]) Poll(td time.Duration) (item T, status bool) {
+	var nilitem T
+	var items []T
+	select {
+	case <-time.After(td):
+		return nilitem, true
+	case <-q.cancel:
+		return nilitem, false
+	case items = <-q.items:
+	}
+	item = items[0]
+	if len(items) == 1 {
+		q.empty <- true
+	} else {
+		q.items <- items[1:]
+	}
+
+	if checkCancel(q.cancel) {
+		return nilitem, false
+	}
+
+	return item, true
+}
+
+func (q *Queue[T]) PollMT(td time.Duration) (item T, status bool) {
+	var nilitem T
+	var items []T
+
+	tic := time.After(td)
+
+	q.Lock()
+	defer q.Unlock()
+
+	select {
+	case <-tic:
+		return nilitem, true
+	case <-q.cancel:
+		return nilitem, false
+	case items = <-q.items:
+	}
+	item = items[0]
+	if len(items) == 1 {
+		q.empty <- true
+	} else {
+		q.items <- items[1:]
+	}
+
+	if checkCancel(q.cancel) {
+		return nilitem, false
+	}
+
+	return item, true
+}
+
+func (q *Queue[T]) WaitMT(trg chan struct{}) (item T, status bool) {
+	q.Lock()
+	defer q.Unlock()
+	return q.wait(trg)
+}
+
+func (q *Queue[T]) wait(trg chan struct{}) (item T, status bool) {
+	var nilitem T
+	var items []T
+	select {
+	case <-trg:
+		return nilitem, true
+	case <-q.cancel:
+		return nilitem, false
+	case items = <-q.items:
+	}
+	item = items[0]
+	if len(items) == 1 {
+		q.empty <- true
+	} else {
+		q.items <- items[1:]
+	}
+
+	if checkCancel(q.cancel) {
+		return nilitem, false
+	}
+
+	return item, true
 }
